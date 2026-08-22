@@ -1,12 +1,12 @@
-# 🌍 Name → Country-of-Origin Checker
+# 🌍 Onoma Trace
 
 Predict the most likely **countries of origin** for a romanized personal name, across
 **~104 countries**, using character-level patterns. The repo is a complete, reproducible
 ML pipeline — from raw name-frequency tables to a demo hosted on
-[Hugging Face Spaces](https://huggingface.co/spaces) (built with [Gradio](https://gradio.app))
+[Hugging Face Spaces](https://huggingface.co/spaces)
 that doubles as a guided walkthrough of every pipeline stage.
 
-**Repository:** https://github.com/britoddd/ml-name_country_origin_checker
+**Dataset:** https://www.kaggle.com/datasets/ilhamfp31/indonesian-abusive-and-hate-speech-twitter-text
 
 > ## ⚠️ Ethics & limitations — read first
 > A name is a **weak, probabilistic** signal. This tool reports a **statistical guess** over
