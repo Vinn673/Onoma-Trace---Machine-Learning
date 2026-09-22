@@ -1,7 +1,7 @@
 # 🌍 Onoma Trace
 
 Predict the most likely **countries of origin** for a romanized personal name, across
-**~104 countries**, using character-level patterns. The repo is a complete, reproducible
+**~104 countries**, using character-level patternse repo is a complete, reproducible
 ML pipeline — from raw name-frequency tables to a demo hosted on
 [Hugging Face Spaces](https://huggingface.co/spaces)
 that doubles as a guided walkthrough of every pipeline stage.
