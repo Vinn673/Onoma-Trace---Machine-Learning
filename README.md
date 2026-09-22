@@ -1,75 +1,138 @@
 # 🌍 Onoma Trace
 
-Predict the most likely **countries of origin** for a romanized personal name, across
-**~104 countries**, using character-level patterns. The repo is a complete, reproducible
-ML pipeline — from raw name-frequency tables to a demo hosted on
-[Hugging Face Spaces](https://huggingface.co/spaces)
-that doubles as a guided walkthrough of every pipeline stage.
+Predict the most likely country of origin for a romanized personal name, across ~104
+countries, using character-level machine learning. The project is a complete, reproducible
+ML pipeline — from raw name-frequency data to a live demo — built as a university group
+project.
 
-**Dataset:** https://www.kaggle.com/datasets/ilhamfp31/indonesian-abusive-and-hate-speech-twitter-text
+> ⚠️ **Ethics note:** a name is a weak, probabilistic signal. This project produces a
+> statistical guess based on character patterns, not a factual statement about anyone's
+> nationality or ethnicity. It should not be used for profiling, hiring, credit,
+> immigration, or law-enforcement decisions.
 
-> ## ⚠️ Ethics & limitations — read first
-> A name is a **weak, probabilistic** signal. This tool reports a **statistical guess** over
-> the character patterns of a romanized name — it is **not** a statement about any individual's
-> nationality, ethnicity, or origin. Many names legitimately span multiple countries
-> (e.g. *"ali ali"* appears in **30** of the 104 countries in this data), and the training data
-> is romanized and uneven across countries.
->
-> **Do not use for profiling, hiring, credit, immigration, or law-enforcement decisions.**
-> Names entered into the demo are not logged or stored.
+## Overview
 
----
+Names carry statistical patterns (letter combinations, spelling conventions, common
+suffixes) that vary by country. This project explores whether those patterns alone are
+enough to predict where a name is likely to come from, without using any additional
+personal information.
 
-## What it does
+**What it does:** given a romanized full name (e.g. `Joko Widodo`), the model returns a
+ranked list of candidate countries with confidence scores, out of 104 possible countries.
 
-Given a full name like `Joko Widodo`, the model returns a ranked list of countries with
-confidence scores. Internally a name is:
+**How it works at a high level:**
+1. The name is normalized — decomposed, stripped of accents, lowercased, and reduced to
+   `a–z` characters and single spaces. The same normalization logic is shared between
+   training and inference to guarantee consistency.
+2. The normalized name is vectorized using character n-gram TF-IDF.
+3. A linear classifier scores the vector against all 104 countries and returns the
+   top-k predictions.
 
-1. **Normalized** — NFD-decomposed, accents stripped, lowercased, reduced to `a–z` + single
-   spaces (identical in training and inference, guaranteed by a shared `common.py`).
-2. **Vectorized** — character **n-gram TF-IDF**.
-3. **Classified** — by a linear model over the 104 countries.
+**Main purpose:** to build and evaluate an end-to-end, reproducible NLP/ML pipeline —
+covering data preparation, exploratory analysis, model training, evaluation, and
+deployment — rather than to produce a production-grade identification tool.
 
-## The pipeline
+## Features
 
-The project is organized as a five-stage pipeline under [`pipeline/`](pipeline/). Each stage is
-runnable on its own (`python -m pipeline.<module>`), and [`main.py`](main.py) runs them in order.
+- **Five-stage ML pipeline**, each stage runnable independently or end-to-end via `main.py`:
+  1. **EDA** — generates plots and a written report on class balance, name length,
+     character/token distributions, and multi-country name ambiguity.
+  2. **Preprocess** — synthesizes realistic full names from aggregated forename/surname
+     frequency tables, splits the data (stratified 70/15/15 train/val/test), and
+     featurizes names into arrays.
+  3. **Train (baseline)** — trains three linear classifiers on character-level TF-IDF
+     features and saves the trained models and vectorizer.
+  4. **Evaluate** — computes held-out test metrics (including an ambiguity-aware,
+     "set-lenient" metric that accounts for names spanning multiple countries) and
+     generates comparison plots.
+  5. **Predict** — command-line inference that returns the top-k most likely countries
+     for a given name.
+- **Shared preprocessing module** (`pipeline/helper/common.py`) ensures identical
+  normalization and featurization logic between training and inference.
+- **Interactive demo app** (Gradio) that walks through every pipeline stage as a separate
+  tab, replaying pre-generated logs, plots, and metrics, with a live "Predict" tab for:
+  - single-name predictions with confidence scores, and
+  - batch predictions from an uploaded CSV, with results downloadable as CSV.
+- **Model backend toggle** in the demo — switch between Logistic Regression, Linear SVM,
+  and SGD at inference time.
+- **One-shot deployment script** (`pipeline/helper/deploy_space.py`) to publish the `app/`
+  demo to a Hugging Face Space.
 
-| # | Stage | Module | What it produces |
-|---|-------|--------|------------------|
-| 1 | **EDA** | `pipeline/eda01.py` | 8 plots + `eda/eda_report.md` + `eda_summary.json` — class balance, name length, character/token distributions, multi-country ambiguity |
-| 2 | **Preprocess** | `pipeline/preprocess02.py` | Synthesizes realistic full names from the aggregated tables, stratified 70/15/15 split, featurizes to index arrays → `data/` |
-| 3 | **Train** | `pipeline/baseline03.py` | Trains 3 linear models on char-TF-IDF → `models/*.pkl` + `baseline_metrics.json` |
-| 4 | **Evaluate** | `pipeline/evaluation04.py` | Held-out test metrics (strict + ambiguity-aware) + plots → `models/baseline_eval_metrics.json` |
-| 5 | **Predict** | `pipeline/predict05.py` | CLI inference: top-k countries for a name |
+## Technologies
 
-Shared helpers live in [`pipeline/helper/`](pipeline/helper/): `common.py` (featurization),
-`eda_style.py` (plot styling), `deploy_space.py` (one-shot Space deploy).
+- **Language:** Python
+- **Machine learning:** scikit-learn (Logistic Regression, Linear SVM, SGD classifiers,
+  TF-IDF vectorization)
+- **Data handling:** pandas, NumPy
+- **Visualization:** matplotlib / seaborn (for EDA and evaluation plots)
+- **Demo / UI:** Gradio (deployed as a Hugging Face Space)
+- **Serialization:** pickle (for saved models and vectorizer)
 
-## Models & results
+## Project Structure
 
-Three scikit-learn linear classifiers over char n-gram TF-IDF. **Logistic Regression** is the
-default served model — best macro-F1, trains in under 3 minutes on CPU.
+```
+.
+├── main.py                 # Runs the full pipeline end-to-end
+├── pipeline/
+│   ├── eda01.py             # 1. Exploratory data analysis
+│   ├── preprocess02.py      # 2. Build dataset + train/val/test splits
+│   ├── baseline03.py        # 3. Train linear models
+│   ├── evaluation04.py      # 4. Evaluate on held-out test set
+│   ├── predict05.py         # 5. CLI inference
+│   └── helper/
+│       ├── common.py        # Shared normalization + featurization logic
+│       ├── eda_style.py      # Shared plot styling
+│       └── deploy_space.py   # Deploys app/ to a Hugging Face Space
+├── app/                     # Gradio demo application (Hugging Face Space)
+├── archive/                 # Raw source data (forename/surname/country tables)
+├── data/                    # Generated splits, featurized arrays, and label maps
+├── eda/                     # Generated EDA plots and report
+└── models/                  # Trained models, vectorizer, metrics, and plots
+```
 
-| Model | Test macro-F1 | Accuracy | Top-3 | Top-5 | MRR | Set-lenient top-1¹ |
-|-------|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Logistic Regression** | **0.500** | 51.1% | 69.3% | 77.1% | 0.629 | 55.1% |
-| Linear SVM | 0.493 | 51.3% | 67.9% | 74.9% | 0.622 | 55.4% |
-| SGD (modified Huber) | 0.478 | 50.0% | 67.3% | 74.6% | 0.611 | 53.9% |
+## Installation / Setup
 
-¹ *Set-lenient* credits a prediction that matches **any** country a name legitimately belongs to
-(via the multi-country map), isolating how much error is just name ambiguity (~+4 points).
+**Requirements:** Python 3, pip.
 
-Easiest countries (high F1): Iceland, South Korea, Cambodia, Azerbaijan, Lithuania.
-Hardest: high-immigration / shared-script countries — US, Canada, and the Gulf states — where
-names overlap heavily across borders.
+```bash
+# 1. Clone the repository
+git clone <your-repo-url>
+cd onoma-trace
 
-## The demo app
+# 2. Install dependencies
+pip install -r requirements.txt
+```
 
-[`app/`](app/) is a self-contained **Hugging Face Space** (Gradio UI). It presents the project
-as **one page per pipeline stage** (EDA → Preprocess → Train → Evaluate → **Predict**): each stage page replays
-its console log and reveals the **pre-generated** plots and metrics, while **Predict** runs live
-(single name or batch CSV). Run it locally:
+The raw source data is not included in the repository. It is provided as a Kaggle
+dataset; see [`data/download_link.txt`](data/download_link.txt) for the link, and place
+the files under `archive/` before running the pipeline.
+
+## Usage
+
+**Run the full pipeline (EDA → preprocess → train → evaluate → predict):**
+
+```bash
+python main.py
+```
+
+**Run a single stage:**
+
+```bash
+python -m pipeline.eda01
+python -m pipeline.baseline03
+```
+
+> Run pipeline modules from the project root using `python -m pipeline.<module>`
+> (not `python pipeline/<module>.py`) so the `pipeline` package resolves correctly.
+
+**Predict from the command line:**
+
+```bash
+python -m pipeline.predict05 --name "Joko Widodo" --top_k 5
+python -m pipeline.predict05 --name "Tanaka" --model baseline_linsvm.pkl --json
+```
+
+**Run the interactive demo locally:**
 
 ```bash
 cd app
@@ -77,72 +140,31 @@ pip install -r requirements.txt
 python app.py
 ```
 
-## Project structure
+The demo presents the project as one tab per pipeline stage, with a live "Predict" tab
+for single or batch (CSV) predictions and a toggle between model backends.
 
-```
-.
-├── main.py                 # run the full pipeline end-to-end
-├── pipeline/
-│   ├── eda01.py            # 1 · exploratory data analysis
-│   ├── preprocess02.py     # 2 · build dataset + splits
-│   ├── baseline03.py       # 3 · train linear models
-│   ├── evaluation04.py     # 4 · evaluate on held-out test
-│   ├── predict05.py        # 5 · CLI inference
-│   └── helper/
-│       ├── common.py       # shared normalization + featurization
-│       ├── eda_style.py    # plot styling
-│       └── deploy_space.py # deploy app/ to a Hugging Face Space
-├── app/                    # Gradio demo / walkthrough (Hugging Face Space)
-├── archive/                # raw input tables (forenames/surnames/country_codes)
-├── data/                   # generated splits + featurized arrays + maps
-├── eda/                    # EDA plots + report
-└── models/                 # trained .pkl models, vectorizer, metrics, plots
-```
+## Team Members
 
-## Data
+**Group 03**
+- Brian Nicholas Tedjo — 2802403183
+- Jason Budiharjo — 2802419446
+- Marvin Adriano Rusdianto — 2802402275
 
-Source tables in [`archive/`](archive/) are **aggregated frequency counts** of name tokens per
-country (not pre-joined full names):
+## Notes
 
-- `forenames.csv` — ~12.4M rows across 104 countries
-- `surnames.csv` — ~21.1M rows across 104 countries
-- `country_codes.csv` — country code → display name
-
-Because there are no full-name rows, `preprocess02.py` **synthesizes** full names by sampling a
-forename and surname weighted by their real per-country counts, reproducing realistic name
-popularity while matching the inference contract (`"First Last"`).
-
-## Setup & usage
-
-```bash
-# 1. install dependencies (full environment)
-pip install -r requirements.txt
-
-# 2. run the whole pipeline (EDA → preprocess → train → evaluate → predict)
-python main.py
-
-# …or run a single stage
-python -m pipeline.eda01
-python -m pipeline.baseline03
-
-# 3. predict from the CLI
-python -m pipeline.predict05 --name "Joko Widodo" --top_k 5
-python -m pipeline.predict05 --name "Tanaka" --model baseline_linsvm.pkl --json
-```
-
-> **Note:** run pipeline modules from the repo root as `python -m pipeline.<module>` (not
-> `python pipeline/<module>.py`) so the `pipeline` package resolves on `sys.path`.
-
-### Deploy the demo
-
-```bash
-python -m pipeline.helper.deploy_space   # uploads app/ to the configured HF Space
-```
-
-- **Source repository:** https://github.com/britoddd/ml-name_country_origin_checker
-- **Live demo (Hugging Face Space):** https://huggingface.co/spaces/britod/name-origins-checker
-
-## License
-
-See [`archive/LICENSE.txt`](archive/LICENSE.txt) for the dataset license. The Space is published
-under MIT (see [`app/README.md`](app/README.md)).
+- **Data source:** the raw data consists of aggregated forename and surname frequency
+  counts per country (not pre-joined full names). Since there are no ready-made full-name
+  records, the preprocessing stage synthesizes full names by sampling a forename and
+  surname weighted by their real per-country frequencies.
+- **Data license:** the dataset license is included at
+  [`archive/LICENSE.txt`](archive/LICENSE.txt) (Apache License 2.0).
+- **Limitations:** name-based origin prediction is inherently uncertain — many names are
+  common across multiple countries, and the underlying data is romanized and unevenly
+  distributed across countries. Predictions are statistical estimates, not factual
+  claims about any individual.
+- **Reproducibility:** normalization and featurization logic is centralized in
+  `pipeline/helper/common.py` and reused at inference time, so predictions are generated
+  the same way as during training.
+- **Screenshots:** the `eda/`, `models/plots/`, and `app/assets/` folders contain
+  generated plots (class balance, EDA charts, confusion matrix, model comparison) that
+  could be added here as screenshots to illustrate results.
